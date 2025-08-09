@@ -6,7 +6,7 @@ const PORT = 3001;
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const app = express();
 const allowedOrigins = [
-  "https://tspmoaibot.onrender.com",
+  "https://tspmoai.onrender.com",
   "http://localhost:5173" // for local development, if applicable
 ];
 app.use(cors({
