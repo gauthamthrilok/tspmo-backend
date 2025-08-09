@@ -81,4 +81,4 @@ app.post("/api/brainrot-stream", async (req, res) => {
   }
 });
 
-app.listen(PORT, "0.0.0.0", () => console.log(`Backend running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
