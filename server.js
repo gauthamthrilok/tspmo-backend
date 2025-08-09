@@ -1,43 +1,40 @@
 import express from "express";
 import cors from "cors";
-import fetch from "node-fetch";
+import { GoogleGenAI } from "@google/genai";
 
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-async function streamChatBetweenModels(startMessage, sendChunk) {
-  const string= `You are well versed in brainrot. Always respond in brainrot terms like rizz, gyatt, skibidi, etc.}`;
-  let messageA = string+startMessage;
+async function chatBetweenModelsStream(startMessage, sendChunk) {
+  let messageA = startMessage;
+
   for (let i = 0; i < 6; i++) {
     // Model A speaks
-    const responseA = await fetch("http://localhost:11434/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gemma:2b",
-        prompt: `${string}\n\n${messageA}`,
-        stream: false, // can be true if Ollama streaming is configured
-        num_predict: 30
-      })
+    const responseA = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ role: "user", parts: [{ text: messageA }] }],
+      config: {
+        systemInstruction:
+          "You are well versed in tik tok brainrot. Always respond in brainrot terms like rizz,gyatt,skibidi, etc.",
+        maxOutputTokens: 30,
+      },
     });
-    const dataA = await responseA.json();
-    const textA = dataA?.response?.trim() ?? "";
+    const textA = responseA?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     sendChunk({ model: "A", text: textA });
 
     // Model B responds
-    const responseB = await fetch("http://localhost:11434/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gemma:2b",
-        prompt: `${string}\n\n${textA}`,
-        stream: false,
-        num_predict: 30
-      })
+    const responseB = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ role: "user", parts: [{ text: textA }] }],
+      config: {
+        systemInstruction:
+          "You are well versed in tik tok brainrot. Always respond in brainrot terms like rizz,gyatt,skibidi, etc.",
+        maxOutputTokens: 30,
+      },
     });
-    const dataB = await responseB.json();
-    const textB = dataB?.response?.trim() ?? "";
+    const textB = responseB?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     sendChunk({ model: "B", text: textB });
 
     messageA = textB;
@@ -45,24 +42,26 @@ async function streamChatBetweenModels(startMessage, sendChunk) {
 }
 
 app.post("/api/brainrot-stream", async (req, res) => {
-  res.set({
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    "Connection": "keep-alive"
-  });
-  res.flushHeaders();
+  const { message } = req.body;
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  // Send initial headers
+  res.flushHeaders?.();
 
   const sendChunk = (data) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
   try {
-    const startMessage = req.body.message || "Hello there";
-    await streamChatBetweenModels(startMessage, sendChunk);
-    res.write("event: end\ndata: done\n\n");
+    await chatBetweenModelsStream(message || "Hello there", sendChunk);
+    // Signal end of stream
+    res.write(`event: end\ndata: done\n\n`);
     res.end();
   } catch (err) {
-    res.write(`event: error\ndata: ${err.message}\n\n`);
+    res.write(`event: error\ndata: ${JSON.stringify(err.message)}\n\n`);
     res.end();
   }
 });
