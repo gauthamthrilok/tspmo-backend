@@ -7,7 +7,8 @@ app.use(cors());
 app.use(express.json());
 
 async function streamChatBetweenModels(startMessage, sendChunk) {
-  let messageA = startMessage;
+  const string= `You are well versed in brainrot. Always respond in brainrot terms like rizz, gyatt, skibidi, etc.}`;
+  let messageA = string+startMessage;
   for (let i = 0; i < 6; i++) {
     // Model A speaks
     const responseA = await fetch("http://localhost:11434/api/generate", {
@@ -15,8 +16,9 @@ async function streamChatBetweenModels(startMessage, sendChunk) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "gemma:2b",
-        prompt: `You are well versed in brainrot. Always respond in brainrot terms like rizz, gyatt, skibidi, etc.\n\n${messageA}`,
-        stream: false // can be true if Ollama streaming is configured
+        prompt: `${string}\n\n${messageA}`,
+        stream: false, // can be true if Ollama streaming is configured
+        num_predict: 30
       })
     });
     const dataA = await responseA.json();
@@ -29,8 +31,9 @@ async function streamChatBetweenModels(startMessage, sendChunk) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "gemma:2b",
-        prompt: `You are well versed in brainrot. Always respond in brainrot terms like rizz, gyatt, skibidi, etc.\n\n${textA}`,
-        stream: false
+        prompt: `${string}\n\n${textA}`,
+        stream: false,
+        num_predict: 30
       })
     });
     const dataB = await responseB.json();
