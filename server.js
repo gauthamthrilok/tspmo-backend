@@ -2,9 +2,24 @@ import express from "express";
 import cors from "cors";
 import { GoogleGenAI } from "@google/genai";
 
+const PORT = 3001;
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const app = express();
-app.use(cors());
+const allowedOrigins = [
+  "https://tspmoai.onrender.com",
+  "http://localhost:5173" // for local development, if applicable
+];
+app.use(cors({
+  origin: function(origin, callback) {
+    // allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  }
+}));
 app.use(express.json());
 
 async function chatBetweenModelsStream(startMessage, sendChunk) {
@@ -66,4 +81,4 @@ app.post("/api/brainrot-stream", async (req, res) => {
   }
 });
 
-app.listen(3001, () => console.log("Backend running on http://localhost:3001"));
+app.listen(PORT, "0.0.0.0", () => console.log(`Backend running on port ${PORT}`));
